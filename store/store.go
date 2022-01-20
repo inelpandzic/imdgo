@@ -123,19 +123,15 @@ func (s *Store) Open() error {
 
 	// NOTE: ovo ce takodjer uvijek biti prazno, jer novi node, prije nego se join-a nikako ne moze znati za leader-a
 	leader := s.raft.Leader()
+	s.logger.Printf("Leader: %s", leader)
 
 	if leader == "" && len(configFuture.Configuration().Servers) == 0 {
 		configuration := raft.Configuration{
 			Servers: getServers(s.members),
-			//Servers: []raft.Server{
-			//	{
-			//		ID:      raft.ServerID("AAAA-BBBB"),
-			//		Address: transport.LocalAddr(),
-			//	},
-			//},
 		}
 		ra.BootstrapCluster(configuration)
 	} else {
+		s.logger.Printf("node %s will join on %s", nodeID, leader)
 		return s.join(nodeID, string(leader), configFuture)
 	}
 
