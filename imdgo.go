@@ -1,25 +1,17 @@
 package imdgo
 
 import (
-	"crypto/md5"
-	"fmt"
+	"github.com/inelpandzic/imdgo/store"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
-
-	"github.com/google/uuid"
-
-	"github.com/inelpandzic/imdgo/store"
 )
 
 const port = "12000"
 
 type Config struct {
-	// This node address
-	Addr string
 	Members []string
 }
 
@@ -77,19 +69,6 @@ func getHostAddr(members []string) string {
 		panic("can't find host address")
 	}
 	return addr
-}
-
-func generateUUID() string {
-	var u string
-	nr, err := uuid.NewRandom()
-	if err == nil {
-		u = nr.String()
-	} else {
-		// nolint: gosec
-		u = fmt.Sprintf("%x", md5.Sum([]byte(time.Now().String())))
-	}
-
-	return u
 }
 
 func (c *Cache) Get(key string) (string, error){
