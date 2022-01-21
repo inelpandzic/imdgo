@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -47,6 +48,8 @@ type Store struct {
 
 	raft *raft.Raft // The consensus mechanism
 
+	server *http.Server // server for sending writes to the leader
+
 	logger *zap.Logger
 }
 
@@ -67,6 +70,7 @@ func New(raftDir, raftBind string, members []string) *Store {
 // Open opens the store. If and there are no existing peers, meaning there is not a formed cluster,
 // then this node becomes the first node, and therefore leader, of the cluster.
 // nodeID should be the server identifier for this node.
+// Call Close() to shut everything down.
 func (s *Store) Open() error {
 	nodeID := nodeID(s.raftBind)
 
@@ -85,7 +89,7 @@ func (s *Store) Open() error {
 
 	snapshots, err := raft.NewFileSnapshotStore(s.raftDir, retainSnapshotCount, os.Stderr)
 	if err != nil {
-		return fmt.Errorf("file snapshot store: %s", err)
+		return fmt.Errorf("file snapshot store: %w", err)
 	}
 
 	var logStore raft.LogStore
@@ -96,7 +100,7 @@ func (s *Store) Open() error {
 	} else {
 		boltDB, err := raftboltdb.NewBoltStore(filepath.Join(s.raftDir, "raft.db"))
 		if err != nil {
-			return fmt.Errorf("new bolt store: %s", err)
+			return fmt.Errorf("new bolt store: %w", err)
 		}
 		logStore = boltDB
 		stableStore = boltDB
@@ -104,7 +108,7 @@ func (s *Store) Open() error {
 
 	ra, err := raft.NewRaft(config, (*fsm)(s), logStore, stableStore, snapshots, transport)
 	if err != nil {
-		return fmt.Errorf("new raft: %s", err)
+		return fmt.Errorf("new raft: %w", err)
 	}
 	s.raft = ra
 
@@ -123,7 +127,13 @@ func (s *Store) Open() error {
 		ra.BootstrapCluster(configuration)
 	} else {
 		s.logger.Debug(fmt.Sprintf("joining to existing cluster on leader: %s", leader))
-		return s.join(nodeID, string(leader), configFuture)
+		if err := s.join(nodeID, string(leader), configFuture); err != nil {
+			return fmt.Errorf("failed to join to existing cluester: %w", err)
+		}
+	}
+
+	if err := srvStart(stripPort(s.raftBind), s); err != nil {
+		return err
 	}
 
 	return nil
@@ -170,7 +180,9 @@ func (s *Store) Set(key, value string) error {
 	s.logger.Debug(fmt.Sprintf("setting new: key:%s, val:%s", key, value))
 
 	if s.raft.State() != raft.Leader {
-		return fmt.Errorf("not leader")
+		l := stripPort(string(s.raft.Leader()))
+		s.logger.Debug(fmt.Sprintf("not leader, forwarding request to %s", l))
+		return writeOnLeader(l, key, value)
 	}
 
 	c := &command{
@@ -206,6 +218,14 @@ func (s *Store) Delete(key string) error {
 
 	f := s.raft.Apply(b, raftTimeout)
 	return f.Error()
+}
+
+func (s *Store) Close() error {
+	s.logger.Info("shutting down imdgo server")
+	s.server.Close()
+
+	s.logger.Info("shutting down imdgo raft")
+	return s.raft.Shutdown().Error()
 }
 
 type fsm Store

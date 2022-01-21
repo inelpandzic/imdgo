@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-const port = "12000"
-
 type Config struct {
 	Members []string
 }
@@ -81,4 +79,8 @@ func (c *Cache) Set(key, value string) error{
 
 func (c *Cache) Delete(key string) error{
 	return c.s.Delete(key)
+}
+
+func (c *Cache) Close() error {
+	return c.s.Close()
 }

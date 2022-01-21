@@ -1,7 +1,6 @@
 package imdgo
 
 import (
-	"fmt"
 	"testing"
 	"time"
 )
@@ -14,7 +13,9 @@ func TestCacheNew(t *testing.T) {
 		t.Fatalf("failed creating cache: %s", err.Error())
 	}
 
-	fmt.Println(cache)
+	t.Cleanup(func() {
+		cache.Close()
+	})
 }
 
 func Test_getCurrentNodeAddress(t *testing.T) {
@@ -30,6 +31,7 @@ func Test_getCurrentNodeAddress(t *testing.T) {
 func TestCacheOperations(t *testing.T) {
 	c := &Config{Members: []string{"127.0.0.1:0"}}
 	cache, err := New(c)
+
 	if err != nil {
 		t.Fatalf("failed creating cache: %s", err.Error())
 	}
@@ -72,4 +74,7 @@ func TestCacheOperations(t *testing.T) {
 		}
 	})
 
+	t.Cleanup(func() {
+		cache.Close()
+	})
 }

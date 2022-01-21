@@ -11,7 +11,6 @@ import (
 func Test_StoreOpen(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	s := New(tmpDir, "127.0.0.1:0", []string{"127.0.0.1:0"})
-	defer os.RemoveAll(tmpDir)
 
 	if s == nil {
 		t.Fatalf("failed to create store")
@@ -20,13 +19,17 @@ func Test_StoreOpen(t *testing.T) {
 	if err := s.Open(); err != nil {
 		t.Fatalf("failed to open store: %s", err)
 	}
+
+	t.Cleanup(func() {
+		s.Close()
+		os.RemoveAll(tmpDir)
+	})
 }
 
 // Test_StoreOpenSingleNode tests that a command can be applied to the log
 func Test_StoreOpenSingleNode(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	s := New(tmpDir, "127.0.0.1:0", []string{"127.0.0.1:0"})
-	defer os.RemoveAll(tmpDir)
 
 	if s == nil {
 		t.Fatalf("failed to create store")
@@ -66,6 +69,11 @@ func Test_StoreOpenSingleNode(t *testing.T) {
 	if value != "" {
 		t.Fatalf("key has wrong value: %s", value)
 	}
+
+	t.Cleanup(func() {
+		s.Close()
+		os.RemoveAll(tmpDir)
+	})
 }
 
 // Test_StoreInMemOpenSingleNode tests that a command can be applied to the log
@@ -73,7 +81,6 @@ func Test_StoreOpenSingleNode(t *testing.T) {
 func Test_StoreInMemOpenSingleNode(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	s := New(tmpDir, "127.0.0.1:0", []string{"127.0.0.1:0"})
-	defer os.RemoveAll(tmpDir)
 
 	if s == nil {
 		t.Fatalf("failed to create store")
@@ -113,4 +120,9 @@ func Test_StoreInMemOpenSingleNode(t *testing.T) {
 	if value != "" {
 		t.Fatalf("key has wrong value: %s", value)
 	}
+
+	t.Cleanup(func() {
+		s.Close()
+		os.RemoveAll(tmpDir)
+	})
 }
