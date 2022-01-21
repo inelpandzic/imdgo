@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
+	"go.uber.org/zap"
 )
 
 const (
@@ -46,11 +47,12 @@ type Store struct {
 
 	raft *raft.Raft // The consensus mechanism
 
-	logger *log.Logger
+	logger *zap.Logger
 }
 
 // New returns a new Store.
 func New(raftDir, raftBind string, members []string) *Store {
+	logger, _ := zap.NewDevelopment()
 	return &Store{
 		nodeID:   nodeID(raftBind),
 		m:        make(map[string]string),
@@ -58,7 +60,7 @@ func New(raftDir, raftBind string, members []string) *Store {
 		raftDir:  raftDir,
 		raftBind: raftBind,
 		members:  members,
-		logger:   log.New(os.Stderr, "[store] ", log.LstdFlags),
+		logger:   logger,
 	}
 }
 
@@ -67,31 +69,25 @@ func New(raftDir, raftBind string, members []string) *Store {
 // nodeID should be the server identifier for this node.
 func (s *Store) Open() error {
 	nodeID := nodeID(s.raftBind)
-	s.logger.Printf("opening the store: nodeID: %s", nodeID)
-	// Setup Raft configuration.
+
+	s.logger.Debug("opening the store", zap.String("node", nodeID))
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(nodeID)
 
-	// Setup Raft communication.
-	s.logger.Printf("net.ResolveTCPAddr : %s", s.raftBind)
 	addr, err := net.ResolveTCPAddr("tcp", s.raftBind)
 	if err != nil {
 		return err
 	}
-	s.logger.Printf("raft.NewTCPTransport : raftBind %s,  addr %s", s.raftBind, addr)
 	transport, err := raft.NewTCPTransport(s.raftBind, addr, 3, 10*time.Second, os.Stderr)
 	if err != nil {
 		return err
 	}
 
-	// Create the snapshot store. This allows the Raft to truncate the log.
-	s.logger.Printf("creating fileSnapshotStore %s", s.raftDir)
 	snapshots, err := raft.NewFileSnapshotStore(s.raftDir, retainSnapshotCount, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("file snapshot store: %s", err)
 	}
 
-	// Create the log store and stable store.
 	var logStore raft.LogStore
 	var stableStore raft.StableStore
 	if s.inmem {
@@ -106,78 +102,64 @@ func (s *Store) Open() error {
 		stableStore = boltDB
 	}
 
-	// Instantiate the Raft systems.
-	s.logger.Printf("raft.NewRaft: %s", s.raftDir)
 	ra, err := raft.NewRaft(config, (*fsm)(s), logStore, stableStore, snapshots, transport)
 	if err != nil {
 		return fmt.Errorf("new raft: %s", err)
 	}
 	s.raft = ra
 
-	// NOTE: za nove node ovo ce uvijek biti prazno jer se nije Join-ao jos uvijek.
 	configFuture := s.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
-		s.logger.Printf("failed to get raft configuration: %v", err)
 		return err
 	}
-
-	// NOTE: ovo ce takodjer uvijek biti prazno, jer novi node, prije nego se join-a nikako ne moze znati za leader-a
 	leader := s.raft.Leader()
-	s.logger.Printf("Leader: %s", leader)
-
 	if leader == "" && len(configFuture.Configuration().Servers) == 0 {
+		servers := getServers(s.members)
 		configuration := raft.Configuration{
-			Servers: getServers(s.members),
+			Servers: servers,
 		}
+
+		s.logger.Debug("bootstrapping the cluster", zap.Any("members", servers))
 		ra.BootstrapCluster(configuration)
 	} else {
-		s.logger.Printf("node %s will join on %s", nodeID, leader)
+		s.logger.Debug(fmt.Sprintf("joining to existing cluster on leader: %s", leader))
 		return s.join(nodeID, string(leader), configFuture)
 	}
 
 	return nil
 }
 
-// Join joins a node, identified by nodeID and located at addr, to this store.
+// join joins a node, identified by nodeID, through the current leader at addr, to the existing cluster.
 // The node must be ready to respond to Raft communications at that address.
 func (s *Store) join(nodeID, addr string, configFuture raft.ConfigurationFuture) error {
-	s.logger.Printf("received join request for remote node %s at %s", nodeID, addr)
-
-	// TODO: call some endpoint on `addr`, which is Leader's address and let him add me at s.raftBind address
-	// everything below should be done on the leader
-
-	s.logger.Printf("about to loop through server")
 	for _, srv := range configFuture.Configuration().Servers {
-		s.logger.Printf("looping through servers: %s, %s, %s", srv.ID, srv.Address, srv.Suffrage.String())
-
 		// If a node already exists with either the joining node's ID or address,
 		// that node may need to be removed from the config first.
 		if srv.ID == raft.ServerID(nodeID) || srv.Address == raft.ServerAddress(addr) {
 			// However if *both* the ID and the address are the same, then nothing -- not even
 			// a join operation -- is needed.
 			if srv.Address == raft.ServerAddress(addr) && srv.ID == raft.ServerID(nodeID) {
-				s.logger.Printf("node %s at %s already member of cluster, ignoring join request", nodeID, addr)
 				return nil
 			}
 
 			future := s.raft.RemoveServer(srv.ID, 0, 0)
 			if err := future.Error(); err != nil {
-				return fmt.Errorf("error removing existing node %s at %s: %s", nodeID, addr, err)
+				return fmt.Errorf("error removing existing node %s on leader %s: %s", nodeID, addr, err)
 			}
 		}
 	}
 
-	s.logger.Printf("adding voter")
 	f := s.raft.AddVoter(raft.ServerID(nodeID), raft.ServerAddress(addr), 0, 0)
 	if f.Error() != nil {
 		return f.Error()
 	}
-	s.logger.Printf("node %s at %s joined successfully", nodeID, addr)
+
 	return nil
 }
 
 // Get returns the value for the given key.
 func (s *Store) Get(key string) (string, error) {
+	s.logger.Debug(fmt.Sprintf("getting: key:%ss", key))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.m[key], nil
@@ -185,6 +167,7 @@ func (s *Store) Get(key string) (string, error) {
 
 // Set sets the value for the given key.
 func (s *Store) Set(key, value string) error {
+	s.logger.Debug(fmt.Sprintf("setting new: key:%s, val:%s", key, value))
 
 	if s.raft.State() != raft.Leader {
 		return fmt.Errorf("not leader")
@@ -206,6 +189,8 @@ func (s *Store) Set(key, value string) error {
 
 // Delete deletes the given key.
 func (s *Store) Delete(key string) error {
+	s.logger.Debug(fmt.Sprintf("deleting: key:%ss", key))
+
 	if s.raft.State() != raft.Leader {
 		return fmt.Errorf("not leader")
 	}
@@ -227,6 +212,8 @@ type fsm Store
 
 // Apply applies a Raft log entry to the key-value store.
 func (f *fsm) Apply(l *raft.Log) interface{} {
+	f.logger.Debug("applying fsm", zap.Any("log", l))
+
 	var c command
 	if err := json.Unmarshal(l.Data, &c); err != nil {
 		panic(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
@@ -244,6 +231,8 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 
 // Snapshot returns a snapshot of the key-value store.
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
+	f.logger.Debug("FSM snapshot")
+
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -257,6 +246,8 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 
 // Restore stores the key-value store to a previous state.
 func (f *fsm) Restore(rc io.ReadCloser) error {
+	f.logger.Debug("FSM restoring to a prev state")
+
 	o := make(map[string]string)
 	if err := json.NewDecoder(rc).Decode(&o); err != nil {
 		return err
@@ -269,6 +260,7 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 }
 
 func (f *fsm) applySet(key, value string) interface{} {
+	f.logger.Debug(fmt.Sprintf("FSM applying set: key:%s, val:%s", key, value))
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.m[key] = value
@@ -276,6 +268,8 @@ func (f *fsm) applySet(key, value string) interface{} {
 }
 
 func (f *fsm) applyDelete(key string) interface{} {
+	f.logger.Debug(fmt.Sprintf("FSM applying delete: key:%s", key))
+
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.m, key)
