@@ -14,7 +14,7 @@ import (
 const port = 9999
 
 func (s *Store) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.logger.Debug("got a write request", zap.String("host", r.Host))
+	s.logger.Sugar().Debugf("got a write request from node %s", r.RemoteAddr)
 	switch r.Method {
 	case "POST":
 		// Read the value from the POST body.
@@ -38,7 +38,7 @@ func (s *Store) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func srvStart(addr string, store *Store) error {
 	a := fmt.Sprintf("%s:%d", addr, port)
-	store.logger.Debug(fmt.Sprintf("starting store server: %s", a))
+	store.logger.Sugar().Debugf("starting store server: %s", a)
 
 	store.server = &http.Server{
 		Addr:         a,

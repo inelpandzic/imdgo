@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -126,7 +125,7 @@ func (s *Store) Open() error {
 		s.logger.Debug("bootstrapping the cluster", zap.Any("members", servers))
 		ra.BootstrapCluster(configuration)
 	} else {
-		s.logger.Debug(fmt.Sprintf("joining to existing cluster on leader: %s", leader))
+		s.logger.Sugar().Debugf("joining to existing cluster on leader: %s", leader)
 		if err := s.join(nodeID, string(leader), configFuture); err != nil {
 			return fmt.Errorf("failed to join to existing cluester: %w", err)
 		}
@@ -169,7 +168,7 @@ func (s *Store) join(nodeID, addr string, configFuture raft.ConfigurationFuture)
 
 // Get returns the value for the given key.
 func (s *Store) Get(key string) (string, error) {
-	s.logger.Debug(fmt.Sprintf("getting: key:%ss", key))
+	s.logger.Sugar().Debugf("get operation: key:%s", key)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.m[key], nil
@@ -177,11 +176,11 @@ func (s *Store) Get(key string) (string, error) {
 
 // Set sets the value for the given key.
 func (s *Store) Set(key, value string) error {
-	s.logger.Debug(fmt.Sprintf("setting new: key:%s, val:%s", key, value))
+	s.logger.Sugar().Debugf("set operation: key:%s, val:%s", key, value)
 
 	if s.raft.State() != raft.Leader {
 		l := stripPort(string(s.raft.Leader()))
-		s.logger.Debug(fmt.Sprintf("not leader, forwarding request to %s", l))
+		s.logger.Sugar().Debugf("not leader, forwarding request to %s", l)
 		return writeOnLeader(l, key, value)
 	}
 
@@ -201,9 +200,10 @@ func (s *Store) Set(key, value string) error {
 
 // Delete deletes the given key.
 func (s *Store) Delete(key string) error {
-	s.logger.Debug(fmt.Sprintf("deleting: key:%ss", key))
+	s.logger.Sugar().Debugf("delete operation: key:%s", key)
 
 	if s.raft.State() != raft.Leader {
+		// TODO: forward delete to leader
 		return fmt.Errorf("not leader")
 	}
 
@@ -236,7 +236,8 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 
 	var c command
 	if err := json.Unmarshal(l.Data, &c); err != nil {
-		panic(fmt.Sprintf("failed to unmarshal command: %s", err.Error()))
+
+		f.logger.Sugar().Panicf("failed to unmarshal command: %s", err.Error())
 	}
 
 	switch c.Op {
@@ -280,7 +281,7 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 }
 
 func (f *fsm) applySet(key, value string) interface{} {
-	f.logger.Debug(fmt.Sprintf("FSM applying set: key:%s, val:%s", key, value))
+	f.logger.Sugar().Debugf("FSM applying set: key:%s, val:%s", key, value)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.m[key] = value
@@ -288,7 +289,7 @@ func (f *fsm) applySet(key, value string) interface{} {
 }
 
 func (f *fsm) applyDelete(key string) interface{} {
-	f.logger.Debug(fmt.Sprintf("FSM applying delete: key:%s", key))
+	f.logger.Sugar().Debugf("FSM applying delete: key:%s", key)
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -336,7 +337,6 @@ func getServers(members []string) []raft.Server {
 		})
 	}
 
-	log.Printf("IMDGO: getServers %v", servers)
 	return servers
 }
 
