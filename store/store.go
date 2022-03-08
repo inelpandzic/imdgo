@@ -31,7 +31,7 @@ const (
 type command struct {
 	Op    string `json:"op,omitempty"`
 	Key   string `json:"key,omitempty"`
-	Value string `json:"value,omitempty"`
+	Value interface{} `json:"value,omitempty"`
 }
 
 // Store is a simple key-value store, where all changes are made via Raft consensus.
@@ -43,12 +43,10 @@ type Store struct {
 	inmem    bool
 
 	mu sync.Mutex
-	m  map[string]string // The key-value store for the system.
+	m  map[string]interface{} // The key-value store for the system.
 
 	raft *raft.Raft // The consensus mechanism
-
 	server *http.Server // server for sending writes to the leader
-
 	logger *zap.Logger
 }
 
@@ -57,7 +55,7 @@ func New(raftDir, raftBind string, members []string) *Store {
 	logger, _ := zap.NewDevelopment()
 	return &Store{
 		nodeID:   nodeID(raftBind),
-		m:        make(map[string]string),
+		m:        make(map[string]interface{}),
 		inmem:    true,
 		raftDir:  raftDir,
 		raftBind: raftBind,
@@ -167,7 +165,7 @@ func (s *Store) join(nodeID, addr string, configFuture raft.ConfigurationFuture)
 }
 
 // Get returns the value for the given key.
-func (s *Store) Get(key string) (string, error) {
+func (s *Store) Get(key string) (interface{}, error) {
 	s.logger.Sugar().Debugf("get operation: key:%s", key)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -175,7 +173,7 @@ func (s *Store) Get(key string) (string, error) {
 }
 
 // Set sets the value for the given key.
-func (s *Store) Set(key, value string) error {
+func (s *Store) Set(key string, value interface{}) error {
 	s.logger.Sugar().Debugf("set operation: key:%s, val:%s", key, value)
 
 	if s.raft.State() != raft.Leader {
@@ -258,7 +256,7 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	defer f.mu.Unlock()
 
 	// Clone the map.
-	o := make(map[string]string)
+	o := make(map[string]interface{})
 	for k, v := range f.m {
 		o[k] = v
 	}
@@ -269,7 +267,7 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 func (f *fsm) Restore(rc io.ReadCloser) error {
 	f.logger.Debug("FSM restoring to a prev state")
 
-	o := make(map[string]string)
+	o := make(map[string]interface{})
 	if err := json.NewDecoder(rc).Decode(&o); err != nil {
 		return err
 	}
@@ -280,7 +278,7 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 	return nil
 }
 
-func (f *fsm) applySet(key, value string) interface{} {
+func (f *fsm) applySet(key string, value interface{}) interface{} {
 	f.logger.Sugar().Debugf("FSM applying set: key:%s, val:%s", key, value)
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -298,7 +296,7 @@ func (f *fsm) applyDelete(key string) interface{} {
 }
 
 type fsmSnapshot struct {
-	store map[string]string
+	store map[string]interface{}
 }
 
 func (f *fsmSnapshot) Persist(sink raft.SnapshotSink) error {

@@ -69,11 +69,11 @@ func getHostAddr(members []string) string {
 	return addr
 }
 
-func (c *Cache) Get(key string) (string, error){
+func (c *Cache) Get(key string) (interface{}, error){
 	return c.s.Get(key)
 }
 
-func (c *Cache) Set(key, value string) error{
+func (c *Cache) Set(key string, value interface{}) error{
 	return c.s.Set(key, value)
 }
 

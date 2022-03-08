@@ -66,7 +66,7 @@ func Test_StoreOpenSingleNode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get key: %s", err.Error())
 	}
-	if value != "" {
+	if value != nil {
 		t.Fatalf("key has wrong value: %s", value)
 	}
 
@@ -117,7 +117,7 @@ func Test_StoreInMemOpenSingleNode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get key: %s", err.Error())
 	}
-	if value != "" {
+	if value != nil {
 		t.Fatalf("key has wrong value: %s", value)
 	}
 

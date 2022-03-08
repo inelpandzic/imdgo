@@ -60,8 +60,8 @@ func srvStart(addr string, store *Store) error {
 	return nil
 }
 
-func writeOnLeader(leaderAddr string, key, value string) error {
-	b, err := json.Marshal(map[string]string{key: value})
+func writeOnLeader(leaderAddr string, key string, value interface{}) error {
+	b, err := json.Marshal(map[string]interface{}{key: value})
 	if err != nil {
 		return err
 	}
