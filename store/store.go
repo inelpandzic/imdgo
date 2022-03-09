@@ -42,7 +42,7 @@ type Store struct {
 	members  []string
 	inmem    bool
 
-	mu sync.Mutex
+	mu sync.RWMutex
 	m  map[string]interface{} // The key-value store for the system.
 
 	raft *raft.Raft // The consensus mechanism

@@ -11,7 +11,7 @@ Currently, it is something like a POC and features like partitioning, key TTL an
 
 ```go
 // set the members of your application cluster
-c := &imdgo.Config{Members: []string{"192.168.10.1:12000", "192.168.10.2:12000"}}
+c := &imdgo.Config{Members: []string{"192.168.10.1:12000", "192.168.10.2:12000", "192.168.10.3:12000"}}
 store, err := imdgo.New(c)
 if err != nil {
     panic(err)
