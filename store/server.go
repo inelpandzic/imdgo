@@ -37,6 +37,8 @@ func (s *Store) srvStart() error {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
+			defer r.Body.Close()
+			
 			for k, v := range m {
 				if err := s.Set(k, v); err != nil {
 					s.logger.Error("failed to store", zap.Error(err))
@@ -44,23 +46,12 @@ func (s *Store) srvStart() error {
 					return
 				}
 			}
-		default:
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
-		return
-	})
-	mux.HandleFunc("/imdgo/key/", func(w http.ResponseWriter, r *http.Request) {
-		s.logger.Sugar().Debugf("got a write request from node %s", r.RemoteAddr)
-
-		switch r.Method {
 		case "DELETE":
-			k := ""
-			parts := strings.Split(r.URL.Path, "/")
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(r.Body)
+			defer r.Body.Close()
 
-			if len(parts) == 4 {
-				k =  parts[3]
-			}
-
+			k := buf.String()
 			if k == "" {
 				s.logger.Error("failed to delete, missing key")
 				w.WriteHeader(http.StatusBadRequest)
@@ -76,6 +67,7 @@ func (s *Store) srvStart() error {
 		}
 		return
 	})
+
 
 	s.server.Handler = mux
 
@@ -113,8 +105,8 @@ func writeOnLeader(leaderAddr string, key string, value interface{}) error {
 func deleteOnLeader(leaderAddr string, key string) error {
 	l := stripPort(leaderAddr)
 
-	e := fmt.Sprintf("http://%s:%d/imdgo/key/%s", l, srvPort, key)
-	req, err := http.NewRequest(http.MethodDelete, e, nil)
+	e := fmt.Sprintf("http://%s:%d/imdgo/key", l, srvPort)
+	req, err := http.NewRequest(http.MethodDelete, e, strings.NewReader(key))
 	if err != nil {
 		return err
 	}
