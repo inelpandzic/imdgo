@@ -47,11 +47,15 @@ func (s *Store) srvStart() error {
 		case "DELETE":
 			k := ""
 			parts := strings.Split(r.URL.Path, "/")
-			if len(parts) == 3 {
-				k =  parts[2]
+
+			s.logger.Sugar().Debugf("AAAA PARTS = %v", parts)
+
+			if len(parts) == 4 {
+				k =  parts[3]
 			}
 
 			if k == "" {
+				s.logger.Error("failed to delete, missing key")
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}

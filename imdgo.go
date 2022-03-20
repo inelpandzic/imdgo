@@ -47,6 +47,7 @@ func getHostAddr(members []string) string {
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("IMDGO: host addresses: %v", addresses)
 
 	var addr string
 	for _, v := range addresses {
