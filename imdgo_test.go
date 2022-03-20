@@ -1,12 +1,31 @@
 package imdgo
 
 import (
+	"log"
+	"net"
+	"os"
 	"testing"
 	"time"
 )
 
+
+func getLocalAddr() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("IMDGO: hostname: %s", hostname)
+
+	addresses, err := net.LookupIP(hostname)
+	if err != nil {
+		panic(err)
+	}
+
+	return addresses[0].String()
+}
+
 func TestCacheNew(t *testing.T) {
-	c := &Config{Members: []string{"127.0.0.1:0"}}
+	c := &Config{Members: []string{getLocalAddr()+":0"}}
 	s, err := New(c)
 
 	if err != nil {
@@ -18,18 +37,8 @@ func TestCacheNew(t *testing.T) {
 	})
 }
 
-func Test_getCurrentNodeAddress(t *testing.T) {
-	want := "127.0.0.1:0"
-	members := []string{want, "123.123.123.123:9"}
-	got := getHostAddr(members)
-
-	if got != want {
-		t.Errorf("want %s, got %s", want, got)
-	}
-}
-
 func TestCacheOperations(t *testing.T) {
-	c := &Config{Members: []string{"127.0.0.1:0"}}
+	c := &Config{Members: []string{getLocalAddr()+":0"}}
 	s, err := New(c)
 
 	if err != nil {
@@ -77,4 +86,14 @@ func TestCacheOperations(t *testing.T) {
 	t.Cleanup(func() {
 		s.Close()
 	})
+}
+
+func Test_getCurrentNodeAddress(t *testing.T) {
+	want := getLocalAddr()
+	members := []string{want, "123.123.123.123:9"}
+	got := getHostAddr(members)
+
+	if got != want {
+		t.Errorf("want %s, got %s", want, got)
+	}
 }

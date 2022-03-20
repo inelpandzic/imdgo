@@ -24,6 +24,8 @@ func New(conf *Config) (*Cache, error) {
 	}
 
 	raftBind := getHostAddr(conf.Members)
+
+	// TODO: here prepare the members in a way to ensure they always have a port on them
 	s := store.New(filepath.Dir(ex), raftBind, conf.Members)
 
 	err = s.Open()
@@ -31,11 +33,7 @@ func New(conf *Config) (*Cache, error) {
 		return nil, err
 	}
 
-	c := &Cache{
-		s: s,
-	}
-
-	return c, nil
+	return &Cache{s: s}, nil
 }
 
 func getHostAddr(members []string) string {

@@ -29,8 +29,8 @@ const (
 )
 
 type command struct {
-	Op    string `json:"op,omitempty"`
-	Key   string `json:"key,omitempty"`
+	Op    string      `json:"op,omitempty"`
+	Key   string      `json:"key,omitempty"`
 	Value interface{} `json:"value,omitempty"`
 }
 
@@ -38,21 +38,22 @@ type command struct {
 type Store struct {
 	nodeID   string
 	raftDir  string
-	raftBind string
+	raftBind string // addr can be with the port, 1.1.1.1:3333
 	members  []string
 	inmem    bool
 
 	mu sync.RWMutex
 	m  map[string]interface{} // The key-value store for the system.
 
-	raft *raft.Raft // The consensus mechanism
+	raft   *raft.Raft   // The consensus mechanism
 	server *http.Server // server for sending writes to the leader
 	logger *zap.Logger
 }
 
 // New returns a new Store.
 func New(raftDir, raftBind string, members []string) *Store {
-	logger, _ := zap.NewDevelopment()
+	logger, _ := zap.NewDevelopment() // TODO: use proper logger here
+
 	return &Store{
 		nodeID:   nodeID(raftBind),
 		m:        make(map[string]interface{}),
@@ -61,6 +62,7 @@ func New(raftDir, raftBind string, members []string) *Store {
 		raftBind: raftBind,
 		members:  members,
 		logger:   logger,
+		server:   newServer(raftBind),
 	}
 }
 
@@ -129,7 +131,7 @@ func (s *Store) Open() error {
 		}
 	}
 
-	if err := srvStart(stripPort(s.raftBind), s); err != nil {
+	if err := s.srvStart(); err != nil {
 		return err
 	}
 
@@ -201,8 +203,9 @@ func (s *Store) Delete(key string) error {
 	s.logger.Sugar().Debugf("delete operation: key:%s", key)
 
 	if s.raft.State() != raft.Leader {
-		// TODO: forward delete to leader
-		return fmt.Errorf("not leader")
+		l := stripPort(string(s.raft.Leader()))
+		s.logger.Sugar().Debugf("not leader, forwarding request to %s", l)
+		return deleteOnLeader(l, key)
 	}
 
 	c := &command{
