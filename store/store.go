@@ -179,8 +179,8 @@ func (s *Store) Set(key string, value interface{}) error {
 	s.logger.Sugar().Debugf("set operation: key:%s, val:%s", key, value)
 
 	if s.raft.State() != raft.Leader {
-		l := stripPort(string(s.raft.Leader()))
-		s.logger.Sugar().Debugf("not leader, forwarding request to %s", l)
+		l := string(s.raft.Leader())
+		s.logger.Sugar().Debugf("forwarding the request to leader at: %s", l)
 		return writeOnLeader(l, key, value)
 	}
 
@@ -203,8 +203,8 @@ func (s *Store) Delete(key string) error {
 	s.logger.Sugar().Debugf("delete operation: key:%s", key)
 
 	if s.raft.State() != raft.Leader {
-		l := stripPort(string(s.raft.Leader()))
-		s.logger.Sugar().Debugf("not leader, forwarding request to %s", l)
+		l := string(s.raft.Leader())
+		s.logger.Sugar().Debugf("forwarding the request to leader at: %s", l)
 		return deleteOnLeader(l, key)
 	}
 

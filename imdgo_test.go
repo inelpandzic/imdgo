@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-
 func getLocalAddr() string {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -25,7 +24,7 @@ func getLocalAddr() string {
 }
 
 func TestCacheNew(t *testing.T) {
-	c := &Config{Members: []string{getLocalAddr()+":0"}}
+	c := &Config{Members: []string{getLocalAddr() + ":0"}}
 	s, err := New(c)
 
 	if err != nil {
@@ -37,8 +36,8 @@ func TestCacheNew(t *testing.T) {
 	})
 }
 
-func TestCacheOperations(t *testing.T) {
-	c := &Config{Members: []string{getLocalAddr()+":0"}}
+func TestStoreOperations(t *testing.T) {
+	c := &Config{Members: []string{getLocalAddr() + ":0"}}
 	s, err := New(c)
 
 	if err != nil {
@@ -51,14 +50,14 @@ func TestCacheOperations(t *testing.T) {
 	value := "value"
 	key := "key"
 
-	t.Run("set operations", func(t *testing.T) {
+	t.Run("set operation", func(t *testing.T) {
 		err := s.Set(key, value)
 		if err != nil {
 			t.Fatalf("failed to put item: %s", err.Error())
 		}
 	})
 
-	t.Run("get operations", func(t *testing.T) {
+	t.Run("get operation", func(t *testing.T) {
 		got, err := s.Get(key)
 		if err != nil {
 			t.Errorf("failed to get item: %s", err.Error())
@@ -71,7 +70,7 @@ func TestCacheOperations(t *testing.T) {
 		}
 	})
 
-	t.Run("delete operations", func(t *testing.T) {
+	t.Run("delete operation", func(t *testing.T) {
 		err := s.Delete(key)
 		if err != nil {
 			t.Errorf("failed to delete item: %s", err.Error())

@@ -44,11 +44,18 @@ func (s *Store) srvStart() error {
 					return
 				}
 			}
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+		return
+	})
+	mux.HandleFunc("/imdgo/key/", func(w http.ResponseWriter, r *http.Request) {
+		s.logger.Sugar().Debugf("got a write request from node %s", r.RemoteAddr)
+
+		switch r.Method {
 		case "DELETE":
 			k := ""
 			parts := strings.Split(r.URL.Path, "/")
-
-			s.logger.Sugar().Debugf("AAAA PARTS = %v", parts)
 
 			if len(parts) == 4 {
 				k =  parts[3]
@@ -85,12 +92,14 @@ func (s *Store) srvStart() error {
 }
 
 func writeOnLeader(leaderAddr string, key string, value interface{}) error {
+	l := stripPort(leaderAddr)
+
 	b, err := json.Marshal(map[string]interface{}{key: value})
 	if err != nil {
 		return err
 	}
 
-	e := fmt.Sprintf("http://%s:%d/imdgo/key", leaderAddr, srvPort)
+	e := fmt.Sprintf("http://%s:%d/imdgo/key", l, srvPort)
 	resp, err := http.Post(e, "application-type/json", bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -102,7 +111,9 @@ func writeOnLeader(leaderAddr string, key string, value interface{}) error {
 }
 
 func deleteOnLeader(leaderAddr string, key string) error {
-	e := fmt.Sprintf("http://%s:%d/imdgo/key/%s", leaderAddr, srvPort, key)
+	l := stripPort(leaderAddr)
+
+	e := fmt.Sprintf("http://%s:%d/imdgo/key/%s", l, srvPort, key)
 	req, err := http.NewRequest(http.MethodDelete, e, nil)
 	if err != nil {
 		return err
