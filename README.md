@@ -5,9 +5,30 @@ Or simply - a light-weight distributed in-memory key-value store inspired primar
 IMDGO is built on top of Raft consensus protocol ([Hashicorp's implementation](https://github.com/hashicorp/raft)) which makes it a CP system in terms
 of the CAP theorem. 
 
-Currently, it is something like a POC and features like partitioning, key TTL and store management API are coming soon in the upcoming releases.
+Because of the leader based replication with Raft, every write and delete operation go to the leader (in case request hits follower nodes)
+and then are replicated to follower.
+Currently, these requests are forwarded via plain old HTTP with JSON, but it will be done with MessagePack or gRPC.
+
+It uses [orcaman/concurrent-map](https://github.com/orcaman/concurrent-map) as an underlining map to reduce locking and contention as much as possible.
+
+The project is work in progress, initial release is coming in the upcoming days.
+
+Features like data partitioning (currently every node has all the data), item TTL and store management API are coming soon in the upcoming releases.
 
 ## Quickstart
+
+Import the package:
+
+```go
+import (
+    "github.com/inelpandzic/imdgo"
+)
+```
+```shell
+go get "github.com/inelpandzic/imdgo"
+```
+
+### Usage
 
 ```go
 // set the members of your application cluster
@@ -19,19 +40,16 @@ if err != nil {
 
 key := "my-key"
 
-// You set the value on one node or application instance
+// You can set the value on one node or application instance
 err := store.Set(key, "and my value which can be anything, not just string")
 if err != nil {
     log.Error(err))
 }
 
-// And you can get it on some other application instance
-val, err := store.Get(key)
-if err != nil {
-    log.Error(err))
+// And then you can get it on some other application instance, safely replicated
+if val, ok := m.Get(key); ok {
+    fmt.Println(val)
 }
-
-fmt.Println(val)
 ```
 
 ## Credits
