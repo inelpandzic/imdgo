@@ -13,11 +13,11 @@ type Config struct {
 	Members []string
 }
 
-type Cache struct {
-	s *store.Store
+type Store struct {
+	s *store.S
 }
 
-func New(conf *Config) (*Cache, error) {
+func New(conf *Config) (*Store, error) {
 	ex, err := os.Executable()
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func New(conf *Config) (*Cache, error) {
 		return nil, err
 	}
 
-	return &Cache{s: s}, nil
+	return &Store{s: s}, nil
 }
 
 func getHostAddr(members []string) string {
@@ -68,18 +68,18 @@ func getHostAddr(members []string) string {
 	return addr
 }
 
-func (c *Cache) Get(key string) (interface{}, error){
+func (c *Store) Get(key string) (interface{}, error){
 	return c.s.Get(key)
 }
 
-func (c *Cache) Set(key string, value interface{}) error{
+func (c *Store) Set(key string, value interface{}) error{
 	return c.s.Set(key, value)
 }
 
-func (c *Cache) Delete(key string) error{
+func (c *Store) Delete(key string) error{
 	return c.s.Delete(key)
 }
 
-func (c *Cache) Close() error {
+func (c *Store) Close() error {
 	return c.s.Close()
 }

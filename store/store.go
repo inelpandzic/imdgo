@@ -34,8 +34,8 @@ type command struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
-// Store is a simple key-value store, where all changes are made via Raft consensus.
-type Store struct {
+// S is a simple key-value store, where all changes are made via Raft consensus.
+type S struct {
 	nodeID   string
 	raftDir  string
 	raftBind string // addr can be with the port, 1.1.1.1:3333
@@ -50,11 +50,11 @@ type Store struct {
 	logger *zap.Logger
 }
 
-// New returns a new Store.
-func New(raftDir, raftBind string, members []string) *Store {
+// New returns a new S.
+func New(raftDir, raftBind string, members []string) *S {
 	logger, _ := zap.NewDevelopment() // TODO: use proper logger here
 
-	return &Store{
+	return &S{
 		nodeID:   nodeID(raftBind),
 		m:        make(map[string]interface{}),
 		inmem:    true,
@@ -70,7 +70,7 @@ func New(raftDir, raftBind string, members []string) *Store {
 // then this node becomes the first node, and therefore leader, of the cluster.
 // nodeID should be the server identifier for this node.
 // Call Close() to shut everything down.
-func (s *Store) Open() error {
+func (s *S) Open() error {
 	nodeID := nodeID(s.raftBind)
 
 	s.logger.Debug("opening the store", zap.String("node", nodeID))
@@ -140,7 +140,7 @@ func (s *Store) Open() error {
 
 // join joins a node, identified by nodeID, through the current leader at addr, to the existing cluster.
 // The node must be ready to respond to Raft communications at that address.
-func (s *Store) join(nodeID, addr string, configFuture raft.ConfigurationFuture) error {
+func (s *S) join(nodeID, addr string, configFuture raft.ConfigurationFuture) error {
 	for _, srv := range configFuture.Configuration().Servers {
 		// If a node already exists with either the joining node's ID or address,
 		// that node may need to be removed from the config first.
@@ -167,7 +167,7 @@ func (s *Store) join(nodeID, addr string, configFuture raft.ConfigurationFuture)
 }
 
 // Get returns the value for the given key.
-func (s *Store) Get(key string) (interface{}, error) {
+func (s *S) Get(key string) (interface{}, error) {
 	s.logger.Sugar().Debugf("get operation: key:%s", key)
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -175,7 +175,7 @@ func (s *Store) Get(key string) (interface{}, error) {
 }
 
 // Set sets the value for the given key.
-func (s *Store) Set(key string, value interface{}) error {
+func (s *S) Set(key string, value interface{}) error {
 	s.logger.Sugar().Debugf("set operation: key:%s, val:%s", key, value)
 
 	if s.raft.State() != raft.Leader {
@@ -199,7 +199,7 @@ func (s *Store) Set(key string, value interface{}) error {
 }
 
 // Delete deletes the given key.
-func (s *Store) Delete(key string) error {
+func (s *S) Delete(key string) error {
 	s.logger.Sugar().Debugf("delete operation: key:%s", key)
 
 	if s.raft.State() != raft.Leader {
@@ -221,7 +221,7 @@ func (s *Store) Delete(key string) error {
 	return f.Error()
 }
 
-func (s *Store) Close() error {
+func (s *S) Close() error {
 	s.logger.Info("shutting down imdgo server")
 	s.server.Close()
 
@@ -229,7 +229,7 @@ func (s *Store) Close() error {
 	return s.raft.Shutdown().Error()
 }
 
-type fsm Store
+type fsm S
 
 // Apply applies a Raft log entry to the key-value store.
 func (f *fsm) Apply(l *raft.Log) interface{} {

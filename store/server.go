@@ -22,7 +22,7 @@ func newServer(addr string) *http.Server {
 	}
 }
 
-func (s *Store) srvStart() error {
+func (s *S) srvStart() error {
 	s.logger.Sugar().Debugf("setting up handler and starting store server: %s", s.server.Addr)
 
 	mux := http.NewServeMux()
