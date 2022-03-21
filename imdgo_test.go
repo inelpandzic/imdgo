@@ -58,8 +58,8 @@ func TestStoreOperations(t *testing.T) {
 	})
 
 	t.Run("get operation", func(t *testing.T) {
-		got, err := s.Get(key)
-		if err != nil {
+		got, ok := s.Get(key)
+		if !ok {
 			t.Errorf("failed to get item: %s", err.Error())
 		}
 

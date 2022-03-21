@@ -68,7 +68,7 @@ func getHostAddr(members []string) string {
 	return addr
 }
 
-func (c *Store) Get(key string) (interface{}, error){
+func (c *Store) Get(key string) (interface{}, bool){
 	return c.s.Get(key)
 }
 
@@ -78,6 +78,10 @@ func (c *Store) Set(key string, value interface{}) error{
 
 func (c *Store) Delete(key string) error{
 	return c.s.Delete(key)
+}
+
+func (c *Store) Count() int {
+	return c.Count()
 }
 
 func (c *Store) Close() error {

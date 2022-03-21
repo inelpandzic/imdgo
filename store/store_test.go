@@ -42,32 +42,31 @@ func Test_StoreOpenSingleNode(t *testing.T) {
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
 
-	if err := s.Set("foo", "bar"); err != nil {
+	const key = "key"
+
+	if err := s.Set(key, "bar"); err != nil {
 		t.Fatalf("failed to set key: %s", err.Error())
 	}
 
 	// Wait for committed log entry to be applied.
 	time.Sleep(500 * time.Millisecond)
-	value, err := s.Get("foo")
-	if err != nil {
-		t.Fatalf("failed to get key: %s", err.Error())
+	value, ok := s.Get(key)
+	if !ok {
+		t.Fatalf("failed to get key: %s", key)
 	}
 	if value != "bar" {
 		t.Fatalf("key has wrong value: %s", value)
 	}
 
-	if err := s.Delete("foo"); err != nil {
+	if err := s.Delete(key); err != nil {
 		t.Fatalf("failed to delete key: %s", err.Error())
 	}
 
 	// Wait for committed log entry to be applied.
 	time.Sleep(500 * time.Millisecond)
-	value, err = s.Get("foo")
-	if err != nil {
-		t.Fatalf("failed to get key: %s", err.Error())
-	}
-	if value != nil {
-		t.Fatalf("key has wrong value: %s", value)
+	value, ok = s.Get(key)
+	if ok {
+		t.Fatalf("key %s should be empty, got value %s", key, value)
 	}
 
 	t.Cleanup(func() {
@@ -93,32 +92,33 @@ func Test_StoreInMemOpenSingleNode(t *testing.T) {
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
 
-	if err := s.Set("foo", "bar"); err != nil {
+	const key = "key"
+
+	if err := s.Set(key, "bar"); err != nil {
 		t.Fatalf("failed to set key: %s", err.Error())
 	}
 
 	// Wait for committed log entry to be applied.
 	time.Sleep(500 * time.Millisecond)
-	value, err := s.Get("foo")
-	if err != nil {
-		t.Fatalf("failed to get key: %s", err.Error())
+
+	value, ok := s.Get(key)
+	if !ok  {
+		t.Fatalf("failed to get key: %s", key)
 	}
 	if value != "bar" {
 		t.Fatalf("key has wrong value: %s", value)
 	}
 
-	if err := s.Delete("foo"); err != nil {
+	if err := s.Delete(key); err != nil {
 		t.Fatalf("failed to delete key: %s", err.Error())
 	}
 
 	// Wait for committed log entry to be applied.
 	time.Sleep(500 * time.Millisecond)
-	value, err = s.Get("foo")
-	if err != nil {
-		t.Fatalf("failed to get key: %s", err.Error())
-	}
-	if value != nil {
-		t.Fatalf("key has wrong value: %s", value)
+
+	value, ok = s.Get(key)
+	if ok {
+		t.Fatalf("key %s should be empty, got %s", key, value)
 	}
 
 	t.Cleanup(func() {

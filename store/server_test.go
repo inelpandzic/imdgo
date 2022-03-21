@@ -31,8 +31,8 @@ func Test_StoreServer(t *testing.T) {
 			t.Fatalf("failed writing on leader, err: %s", err.Error())
 		}
 
-		got, err := s.Get(key)
-		if err != nil {
+		got, ok := s.Get(key)
+		if !ok {
 			t.Fatalf("failed getting the key, err: %s", err.Error())
 		}
 
@@ -47,7 +47,7 @@ func Test_StoreServer(t *testing.T) {
 			t.Fatalf("failed deleting on leader, err: %s", err.Error())
 		}
 
-		l := len(s.m)
+		l := s.m.Count()
 		if l != 0 {
 			t.Errorf("map length should be 0, but got %d", l)
 		}
