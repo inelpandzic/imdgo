@@ -36,9 +36,6 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 	f.logger.Debug("FSM snapshot")
 
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
 	// Clone the map.
 	o := make(map[string]interface{})
 	for item := range f.m.IterBuffered() {

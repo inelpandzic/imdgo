@@ -1,12 +1,14 @@
 package imdgo
 
 import (
-	"github.com/inelpandzic/imdgo/store"
+	"fmt"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/inelpandzic/imdgo/store"
 )
 
 type Config struct {
@@ -18,15 +20,18 @@ type Store struct {
 }
 
 func New(conf *Config) (*Store, error) {
+	err := validateMembers(conf.Members)
+	if err != nil {
+		return nil, err
+	}
+
 	ex, err := os.Executable()
 	if err != nil {
 		return nil, err
 	}
 
-	raftBind := getHostAddr(conf.Members)
-
-	// TODO: here prepare the members in a way to ensure they always have a port on them
-	s := store.New(filepath.Dir(ex), raftBind, conf.Members)
+	addr := getHostAddr(conf.Members)
+	s := store.New(filepath.Dir(ex), addr, conf.Members)
 
 	err = s.Open()
 	if err != nil {
@@ -36,6 +41,37 @@ func New(conf *Config) (*Store, error) {
 	return &Store{s: s}, nil
 }
 
+func (s *Store) Get(key string) (interface{}, bool) {
+	return s.s.Get(key)
+}
+
+func (s *Store) Set(key string, value interface{}) error {
+	return s.s.Set(key, value)
+}
+
+func (s *Store) Delete(key string) error {
+	return s.s.Delete(key)
+}
+
+func (s *Store) Count() int {
+	return s.Count()
+}
+
+func (s *Store) Close() error {
+	return s.s.Close()
+}
+
+// validateMembers checks the validity of members IP addresses
+func validateMembers(members []string) error {
+	for _, m := range members {
+		if net.ParseIP(m) == nil {
+			return fmt.Errorf("invalid member address: %s", m)
+		}
+	}
+	return nil
+}
+
+// getHostAddr resolves current host IP address
 func getHostAddr(members []string) string {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -66,24 +102,4 @@ func getHostAddr(members []string) string {
 		panic("can't find host address")
 	}
 	return addr
-}
-
-func (c *Store) Get(key string) (interface{}, bool){
-	return c.s.Get(key)
-}
-
-func (c *Store) Set(key string, value interface{}) error{
-	return c.s.Set(key, value)
-}
-
-func (c *Store) Delete(key string) error{
-	return c.s.Delete(key)
-}
-
-func (c *Store) Count() int {
-	return c.Count()
-}
-
-func (c *Store) Close() error {
-	return c.s.Close()
 }

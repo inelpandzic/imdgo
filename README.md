@@ -5,7 +5,7 @@ Or simply - a light-weight distributed in-memory key-value store inspired primar
 IMDGO is built on top of Raft consensus protocol ([Hashicorp's implementation](https://github.com/hashicorp/raft)) which makes it a CP system in terms
 of the CAP theorem. 
 
-Because of the leader based replication with Raft, every write and delete operation go to the leader (in case request hits follower nodes)
+Because of the leader based replication with Raft, every write and delete operation go to the leader (in case request hits a follower node)
 and then are replicated to follower.
 Currently, these requests are forwarded via plain old HTTP with JSON, but it will be done with MessagePack or gRPC.
 
@@ -32,7 +32,7 @@ go get "github.com/inelpandzic/imdgo"
 
 ```go
 // set the members of your application cluster
-c := &imdgo.Config{Members: []string{"192.168.10.1:12000", "192.168.10.2:12000", "192.168.10.3:12000"}}
+c := &imdgo.Config{Members: []string{"192.168.10.1", "192.168.10.2", "192.168.10.3"}}
 store, err := imdgo.New(c)
 if err != nil {
     panic(err)
@@ -51,6 +51,8 @@ if val, ok := m.Get(key); ok {
     fmt.Println(val)
 }
 ```
+
+For now, imdgo runs with only default preconfigured ports `6701` and `6801` which needs to be available.
 
 ## Credits
 

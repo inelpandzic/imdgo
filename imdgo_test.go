@@ -24,7 +24,7 @@ func getLocalAddr() string {
 }
 
 func TestCacheNew(t *testing.T) {
-	c := &Config{Members: []string{getLocalAddr() + ":0"}}
+	c := &Config{Members: []string{getLocalAddr()}}
 	s, err := New(c)
 
 	if err != nil {
@@ -37,7 +37,7 @@ func TestCacheNew(t *testing.T) {
 }
 
 func TestStoreOperations(t *testing.T) {
-	c := &Config{Members: []string{getLocalAddr() + ":0"}}
+	c := &Config{Members: []string{getLocalAddr()}}
 	s, err := New(c)
 
 	if err != nil {

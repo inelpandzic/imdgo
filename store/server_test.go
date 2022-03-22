@@ -7,10 +7,9 @@ import (
 )
 
 func Test_StoreServer(t *testing.T) {
-	const leaderAddr = "localhost:0"
+	const leaderAddr = "localhost"
 	tmpDir, _ := ioutil.TempDir("", "store_test")
 	s := New(tmpDir, leaderAddr, []string{leaderAddr})
-
 	if s == nil {
 		t.Fatalf("failed to create store")
 	}

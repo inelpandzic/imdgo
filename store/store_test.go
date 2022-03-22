@@ -10,7 +10,7 @@ import (
 // Test_StoreOpen tests that the store can be opened.
 func Test_StoreOpen(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
-	s := New(tmpDir, "127.0.0.1:0", []string{"127.0.0.1:0"})
+	s := New(tmpDir, "127.0.0.1", []string{"127.0.0.1"})
 
 	if s == nil {
 		t.Fatalf("failed to create store")
@@ -29,7 +29,7 @@ func Test_StoreOpen(t *testing.T) {
 // Test_StoreOpenSingleNode tests that a command can be applied to the log
 func Test_StoreOpenSingleNode(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
-	s := New(tmpDir, "127.0.0.1:0", []string{"127.0.0.1:0"})
+	s := New(tmpDir, "127.0.0.1", []string{"127.0.0.1"})
 
 	if s == nil {
 		t.Fatalf("failed to create store")
@@ -79,7 +79,7 @@ func Test_StoreOpenSingleNode(t *testing.T) {
 // stored in RAM.
 func Test_StoreInMemOpenSingleNode(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
-	s := New(tmpDir, "127.0.0.1:0", []string{"127.0.0.1:0"})
+	s := New(tmpDir, "127.0.0.1", []string{"127.0.0.1"})
 
 	if s == nil {
 		t.Fatalf("failed to create store")

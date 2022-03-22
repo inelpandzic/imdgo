@@ -11,11 +11,9 @@ import (
 	"go.uber.org/zap"
 )
 
-const srvPort = 9999
-
-func newServer(addr string) *http.Server {
+func newServer(hostAddr string) *http.Server {
 	return &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", stripPort(addr), srvPort),
+		Addr:         fmt.Sprintf("%s:%d", hostAddr, srvPort),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 90 * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -84,14 +82,12 @@ func (s *S) srvStart() error {
 }
 
 func writeOnLeader(leaderAddr string, key string, value interface{}) error {
-	l := stripPort(leaderAddr)
-
 	b, err := json.Marshal(map[string]interface{}{key: value})
 	if err != nil {
 		return err
 	}
 
-	e := fmt.Sprintf("http://%s:%d/imdgo/key", l, srvPort)
+	e := fmt.Sprintf("http://%s:%d/imdgo/key", leaderAddr, srvPort)
 	resp, err := http.Post(e, "application-type/json", bytes.NewReader(b))
 	if err != nil {
 		return err
@@ -103,9 +99,7 @@ func writeOnLeader(leaderAddr string, key string, value interface{}) error {
 }
 
 func deleteOnLeader(leaderAddr string, key string) error {
-	l := stripPort(leaderAddr)
-
-	e := fmt.Sprintf("http://%s:%d/imdgo/key", l, srvPort)
+	e := fmt.Sprintf("http://%s:%d/imdgo/key", leaderAddr, srvPort)
 	req, err := http.NewRequest(http.MethodDelete, e, strings.NewReader(key))
 	if err != nil {
 		return err

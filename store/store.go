@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -26,6 +25,8 @@ import (
 const (
 	retainSnapshotCount = 2
 	raftTimeout         = 10 * time.Second
+	srvPort             = 6801
+	raftPort            = 6701
 )
 
 type command struct {
@@ -38,33 +39,30 @@ type command struct {
 type S struct {
 	nodeID   string
 	raftDir  string
-	raftBind string // addr can be with the port, 1.1.1.1:3333
-	members  []string
+	raftBind string   // IP address with raft port
+	members  []string // IP addresses  with raft port
 	inmem    bool
 
-	//mu sync.RWMutex
-	//m  map[string]interface{} // The key-value store for the system.
-	mu sync.Mutex
 	m cmap.ConcurrentMap
-
-	raft   *raft.Raft   // The consensus mechanism
+	raft   *raft.Raft   // the consensus mechanism
 	server *http.Server // server for sending writes to the leader
+
 	logger *zap.Logger
 }
 
 // New returns a new S.
-func New(raftDir, raftBind string, members []string) *S {
+func New(raftDir, hostAddr string, members []string) *S {
 	logger, _ := zap.NewDevelopment() // TODO: use proper logger here
 
 	return &S{
-		nodeID:   nodeID(raftBind),
+		nodeID:   nodeID(hostAddr),
 		m:        cmap.New(),
 		inmem:    true,
 		raftDir:  raftDir,
-		raftBind: raftBind,
+		raftBind: fmt.Sprintf("%s:%d", hostAddr, raftPort),
 		members:  members,
 		logger:   logger,
-		server:   newServer(raftBind),
+		server:   newServer(hostAddr),
 	}
 }
 
@@ -73,11 +71,10 @@ func New(raftDir, raftBind string, members []string) *S {
 // nodeID should be the server identifier for this node.
 // Call Close() to shut everything down.
 func (s *S) Open() error {
-	nodeID := nodeID(s.raftBind)
+	s.logger.Debug("opening the store", zap.String("node", s.nodeID))
 
-	s.logger.Debug("opening the store", zap.String("node", nodeID))
 	config := raft.DefaultConfig()
-	config.LocalID = raft.ServerID(nodeID)
+	config.LocalID = raft.ServerID(s.nodeID)
 
 	addr, err := net.ResolveTCPAddr("tcp", s.raftBind)
 	if err != nil {
@@ -128,7 +125,7 @@ func (s *S) Open() error {
 		ra.BootstrapCluster(configuration)
 	} else {
 		s.logger.Sugar().Debugf("joining to existing cluster on leader: %s", leader)
-		if err := s.join(nodeID, string(leader), configFuture); err != nil {
+		if err := s.join(s.nodeID, string(leader), configFuture); err != nil {
 			return fmt.Errorf("failed to join to existing cluester: %w", err)
 		}
 	}
@@ -179,7 +176,7 @@ func (s *S) Set(key string, value interface{}) error {
 	s.logger.Sugar().Debugf("set operation: key:%s, val:%s", key, value)
 
 	if s.raft.State() != raft.Leader {
-		l := string(s.raft.Leader())
+		l := stripPort(string(s.raft.Leader()))
 		s.logger.Sugar().Debugf("forwarding the request to leader at: %s", l)
 		return writeOnLeader(l, key, value)
 	}
@@ -203,7 +200,7 @@ func (s *S) Delete(key string) error {
 	s.logger.Sugar().Debugf("delete operation: key:%s", key)
 
 	if s.raft.State() != raft.Leader {
-		l := string(s.raft.Leader())
+		l := stripPort(string(s.raft.Leader()))
 		s.logger.Sugar().Debugf("forwarding the request to leader at: %s", l)
 		return deleteOnLeader(l, key)
 	}
@@ -221,7 +218,7 @@ func (s *S) Delete(key string) error {
 	return f.Error()
 }
 
-func (s *S) Count() int{
+func (s *S) Count() int {
 	return s.m.Count()
 }
 
@@ -233,20 +230,19 @@ func (s *S) Close() error {
 	return s.raft.Shutdown().Error()
 }
 
-
 func getServers(members []string) []raft.Server {
 	var servers []raft.Server
 
 	for _, m := range members {
 		servers = append(servers, raft.Server{
 			ID:      raft.ServerID(nodeID(m)),
-			Address: raft.ServerAddress(m),
+			Address: raft.ServerAddress(fmt.Sprintf("%s:%d", m, raftPort)),
 		})
 	}
 
 	return servers
 }
 
-func nodeID(bindAddr string) string {
-	return "node-" + bindAddr + "-edon"
+func nodeID(hostAddr string) string {
+	return "node-" + hostAddr + "-edon"
 }
