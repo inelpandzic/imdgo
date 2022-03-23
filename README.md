@@ -6,12 +6,10 @@ IMDGO is built on top of Raft consensus protocol ([Hashicorp's implementation](h
 of the CAP theorem. 
 
 Because of the leader based replication with Raft, every write and delete operation go to the leader (in case request hits a follower node)
-and then are replicated to follower.
+and then are replicated to followers.
 Currently, these requests are forwarded via plain old HTTP with JSON, but it will be done with MessagePack or gRPC.
 
 It uses [orcaman/concurrent-map](https://github.com/orcaman/concurrent-map) as an underlining map to reduce locking and contention as much as possible.
-
-The project is work in progress, initial release is coming in the upcoming days.
 
 Features like data partitioning (currently every node has all the data), item TTL and store management API are coming soon in the upcoming releases.
 
