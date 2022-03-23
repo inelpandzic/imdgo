@@ -54,7 +54,7 @@ func (s *Store) Delete(key string) error {
 }
 
 func (s *Store) Count() int {
-	return s.Count()
+	return s.s.Count()
 }
 
 func (s *Store) Close() error {

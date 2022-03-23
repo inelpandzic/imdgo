@@ -63,10 +63,8 @@ func TestStoreOperations(t *testing.T) {
 			t.Errorf("failed to get item: %s", err.Error())
 		}
 
-		want := value
-
-		if got != want {
-			t.Errorf("want %s but got %s", want, got)
+		if got != value {
+			t.Errorf("want %s but got %s", value, got)
 		}
 	})
 
@@ -79,6 +77,14 @@ func TestStoreOperations(t *testing.T) {
 		item, _ := s.Get(key)
 		if item != nil {
 			t.Errorf("failed to delete item, it is still in the cache: %s", item)
+		}
+	})
+
+	t.Run("count operation", func(t *testing.T) {
+		got := s.Count()
+
+		if got != 0 {
+			t.Errorf("want 0 but got %d", got)
 		}
 	})
 
