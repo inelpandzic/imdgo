@@ -11,6 +11,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// newServer returns http.Server used for sending write operations
+// to the leader as well as supporting imdgo management API
 func newServer(hostAddr string) *http.Server {
 	return &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", hostAddr, srvPort),
@@ -20,7 +22,8 @@ func newServer(hostAddr string) *http.Server {
 	}
 }
 
-func (s *S) srvStart() error {
+// startServer will start up http server
+func (s *S) startServer() error {
 	s.logger.Sugar().Debugf("setting up handler and starting store server: %s", s.server.Addr)
 
 	mux := http.NewServeMux()
@@ -81,6 +84,7 @@ func (s *S) srvStart() error {
 	return nil
 }
 
+// writeOnLeader will send a set operation to the leader from a follower node
 func writeOnLeader(leaderAddr string, key string, value interface{}) error {
 	b, err := json.Marshal(map[string]interface{}{key: value})
 	if err != nil {
@@ -98,6 +102,7 @@ func writeOnLeader(leaderAddr string, key string, value interface{}) error {
 
 }
 
+// deleteOnLeader will send a delete operation to the leader from a follower node
 func deleteOnLeader(leaderAddr string, key string) error {
 	e := fmt.Sprintf("http://%s:%d/imdgo/key", leaderAddr, srvPort)
 	req, err := http.NewRequest(http.MethodDelete, e, strings.NewReader(key))
@@ -115,6 +120,7 @@ func deleteOnLeader(leaderAddr string, key string) error {
 	return nil
 }
 
+// stripPort returns only IP address without the trailing port number
 func stripPort(a string) string {
 	return strings.Split(a, ":")[0]
 }

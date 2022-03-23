@@ -11,14 +11,18 @@ import (
 	"github.com/inelpandzic/imdgo/store"
 )
 
+// Config is imdgo configuration
 type Config struct {
 	Members []string
 }
 
+// Store is a imdgo backing storage
 type Store struct {
 	s *store.S
 }
 
+// New creates new imdgo store. Store.Close() must be called in order
+// to release all the resources and shut everything down.
 func New(conf *Config) (*Store, error) {
 	err := validateMembers(conf.Members)
 	if err != nil {
@@ -41,22 +45,28 @@ func New(conf *Config) (*Store, error) {
 	return &Store{s: s}, nil
 }
 
+// Get gets a value for a given key. It will return nil and false
+// if the value is not present.
 func (s *Store) Get(key string) (interface{}, bool) {
 	return s.s.Get(key)
 }
 
+// Set puts key with associated value into store
 func (s *Store) Set(key string, value interface{}) error {
 	return s.s.Set(key, value)
 }
 
+// Delete removes a KV pair for a given key
 func (s *Store) Delete(key string) error {
 	return s.s.Delete(key)
 }
 
+// Count return number of items in the store
 func (s *Store) Count() int {
 	return s.s.Count()
 }
 
+// Close shuts imdgo down. Must be called in order to release all the resources
 func (s *Store) Close() error {
 	return s.s.Close()
 }

@@ -10,6 +10,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// fsm is a finite state machine that implements raft.FSM
+// for the replicated log usage
 type fsm S
 
 // Apply applies a Raft log entry to the key-value store.
@@ -75,10 +77,12 @@ func (f *fsm) applyDelete(key string) interface{} {
 	return nil
 }
 
+// fmsSnapshot represents the fsm snapshot
 type fsmSnapshot struct {
 	store map[string]interface{}
 }
 
+// Persist will persist the current store state
 func (f *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 	err := func() error {
 		// Encode data.
@@ -89,6 +93,7 @@ func (f *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
 
 		// Write data to sink.
 		if _, err := sink.Write(b); err != nil {
+			_ = sink.Cancel()
 			return err
 		}
 

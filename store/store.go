@@ -1,10 +1,3 @@
-// Package store provides a simple distributed key-value store. The keys and
-// associated values are changed via distributed consensus, meaning that the
-// values are changed only when a majority of nodes in the cluster agree on
-// the new value.
-//
-// Distributed consensus is provided via the Raft algorithm, specifically the
-// Hashicorp implementation.
 package store
 
 import (
@@ -29,6 +22,7 @@ const (
 	raftPort            = 6701
 )
 
+// command will be applied by raft FSM
 type command struct {
 	Op    string      `json:"op,omitempty"`
 	Key   string      `json:"key,omitempty"`
@@ -68,8 +62,6 @@ func New(raftDir, hostAddr string, members []string) *S {
 
 // Open opens the store. If and there are no existing peers, meaning there is not a formed cluster,
 // then this node becomes the first node, and therefore leader, of the cluster.
-// nodeID should be the server identifier for this node.
-// Call Close() to shut everything down.
 func (s *S) Open() error {
 	s.logger.Debug("opening the store", zap.String("node", s.nodeID))
 
@@ -110,6 +102,7 @@ func (s *S) Open() error {
 	}
 	s.raft = ra
 
+	// bootstrap the cluster or join the existing one
 	configFuture := s.raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
 		return err
@@ -130,7 +123,7 @@ func (s *S) Open() error {
 		}
 	}
 
-	if err := s.srvStart(); err != nil {
+	if err := s.startServer(); err != nil {
 		return err
 	}
 
@@ -171,7 +164,8 @@ func (s *S) Get(key string) (interface{}, bool) {
 	return s.m.Get(key)
 }
 
-// Set sets the value for the given key.
+// Set sets the value for the given key. If it gets called on a follower node
+// the request will be forwarded to the leader.
 func (s *S) Set(key string, value interface{}) error {
 	s.logger.Sugar().Debugf("set operation: key:%s, val:%s", key, value)
 
@@ -195,7 +189,8 @@ func (s *S) Set(key string, value interface{}) error {
 	return f.Error()
 }
 
-// Delete deletes the given key.
+// Delete deletes the given key. If it gets called on a follower node
+// the request will be forwarded to the leader.
 func (s *S) Delete(key string) error {
 	s.logger.Sugar().Debugf("delete operation: key:%s", key)
 
@@ -222,6 +217,7 @@ func (s *S) Count() int {
 	return s.m.Count()
 }
 
+// Close shuts down raft and store http server
 func (s *S) Close() error {
 	s.logger.Info("shutting down imdgo server")
 	s.server.Close()
@@ -230,6 +226,7 @@ func (s *S) Close() error {
 	return s.raft.Shutdown().Error()
 }
 
+// getServers returns configured raft servers
 func getServers(members []string) []raft.Server {
 	var servers []raft.Server
 
@@ -243,6 +240,7 @@ func getServers(members []string) []raft.Server {
 	return servers
 }
 
+// nodeID generates node ID.
 func nodeID(hostAddr string) string {
 	return "node-" + hostAddr + "-edon"
 }

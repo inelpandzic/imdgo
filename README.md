@@ -37,6 +37,7 @@ store, err := imdgo.New(c)
 if err != nil {
     panic(err)
 }
+defer store.Close()
 
 key := "my-key"
 
