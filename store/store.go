@@ -29,7 +29,7 @@ type command struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
-// S is a simple key-value store, where all changes are made via Raft consensus.
+// S is an in-memory key-value store, where all changes are made via Raft consensus.
 type S struct {
 	nodeID   string
 	raftDir  string
@@ -44,7 +44,7 @@ type S struct {
 	logger *zap.Logger
 }
 
-// New returns a new S.
+// New returns a new in-memory Store.
 func New(raftDir, hostAddr string, members []string) *S {
 	logger, _ := zap.NewDevelopment() // TODO: use proper logger here
 
