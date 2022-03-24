@@ -5,13 +5,22 @@ Or simply - a light-weight distributed in-memory key-value store inspired primar
 IMDGO is built on top of Raft consensus protocol ([Hashicorp's implementation](https://github.com/hashicorp/raft)) which makes it a CP system in terms
 of the CAP theorem. 
 
+![imdgo diagram](diagram.png)
+
 Because of the leader based replication with Raft, every write and delete operation go to the leader (in case request hits a follower node)
 and then are replicated to followers.
 Currently, these requests are forwarded via plain old HTTP with JSON, but it will be done with MessagePack or gRPC.
 
 It uses [orcaman/concurrent-map](https://github.com/orcaman/concurrent-map) as an underlining map to reduce locking and contention as much as possible.
 
-Features like data partitioning (currently every node has all the data), item TTL and store management API are coming soon in the upcoming releases.
+Upcoming features:
+- data partitioning (currently every node hols all the data)
+- multiple distinct maps
+- item TTL and eviction
+- memory usage management (set the percentage of the app's memory for imdgo)
+- store management API
+
+Beside the new stuff, there are non-functional things to improve and for sure bugs to fix.
 
 ## Quickstart
 
