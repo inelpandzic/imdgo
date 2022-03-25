@@ -2,8 +2,9 @@
 
 Or simply - a light-weight distributed in-memory key-value store inspired primarily by Hazelcast.
 
-IMDGO is built on top of Raft consensus protocol ([Hashicorp's implementation](https://github.com/hashicorp/raft)) which makes it a CP system in terms
-of the CAP theorem. 
+IMDGO is built on top of Raft consensus protocol ([Hashicorp's implementation](https://github.com/hashicorp/raft)) where all
+write (set and delete) operations are done through Raft and reads are done from a local replica. This makes imdgo have a
+sequential consistency model.
 
 ![imdgo diagram](diagram.png)
 
