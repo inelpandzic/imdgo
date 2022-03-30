@@ -46,7 +46,8 @@ type S struct {
 
 // New returns a new in-memory Store.
 func New(raftDir, hostAddr string, members []string) *S {
-	logger, _ := zap.NewProduction()
+	//logger, _ := zap.NewProduction()
+	logger, _ := zap.NewDevelopment()
 
 	return &S{
 		nodeID:   nodeID(hostAddr),
