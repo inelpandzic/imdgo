@@ -3,7 +3,7 @@
 Or simply - a light-weight distributed in-memory key-value store inspired primarily by Hazelcast.
 
 IMDGO is built on top of Raft consensus protocol ([Hashicorp's implementation](https://github.com/hashicorp/raft)) where all
-write (set and delete) operations are done through Raft and reads are done from a local replica.
+write (set and delete) operations are done through Raft and reads are read from a local replica.
 
 ![imdgo diagram](diagram.png)
 
@@ -14,7 +14,7 @@ Currently, these requests are forwarded via plain old HTTP with JSON, but it wil
 It uses [orcaman/concurrent-map](https://github.com/orcaman/concurrent-map) as an underlining map to reduce locking and contention as much as possible.
 
 Upcoming features:
-- data partitioning (currently every node hols all the data)
+- data partitioning (currently every node holds all the data)
 - multiple distinct maps
 - item TTL and eviction
 - memory usage management (set the percentage of the app's memory for imdgo)
