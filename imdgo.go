@@ -8,12 +8,22 @@ import (
 	"path/filepath"
 	"strings"
 
+    "github.com/hashicorp/go-hclog"
+
 	"github.com/inelpandzic/imdgo/store"
 )
 
 // Config is imdgo configuration
 type Config struct {
 	Members []string
+
+	// LogLevel represents a log level. If the value does not match a known
+	// logging level or is not set, INFO level is used.
+	LogLevel string
+
+	// Logger is a user-provided logger. If nil, a logger writing to
+	// os.Stderr with LogLevel INFO is used.
+	Logger hclog.Logger
 }
 
 // Store is a imdgo backing storage
@@ -35,7 +45,7 @@ func New(conf *Config) (*Store, error) {
 	}
 
 	addr := getHostAddr(conf.Members)
-	s := store.New(filepath.Dir(ex), addr, conf.Members)
+	s := store.New(filepath.Dir(ex), addr, conf.Members, conf.Logger)
 
 	err = s.Open()
 	if err != nil {

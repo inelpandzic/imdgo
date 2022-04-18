@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 // newServer returns http.Server used for sending write operations
@@ -24,11 +22,11 @@ func newServer(hostAddr string) *http.Server {
 
 // startServer will start up http server
 func (s *S) startServer() error {
-	s.logger.Sugar().Debugf("setting up handler and starting store server: %s", s.server.Addr)
+	s.logger.Debug(fmt.Sprintf("setting up handler and starting store server: %s", s.server.Addr))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/imdgo/key", func(w http.ResponseWriter, r *http.Request) {
-		s.logger.Sugar().Debugf("got a write request from node %s", r.RemoteAddr)
+		s.logger.Debug(fmt.Sprintf("got a write request from node %s", r.RemoteAddr))
 
 		switch r.Method {
 		case "POST":
@@ -42,7 +40,7 @@ func (s *S) startServer() error {
 			
 			for k, v := range m {
 				if err := s.Set(k, v); err != nil {
-					s.logger.Error("failed to store", zap.Error(err))
+                    s.logger.Error("failed to store", "err", err)
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
@@ -59,7 +57,7 @@ func (s *S) startServer() error {
 				return
 			}
 			if err := s.Delete(k); err != nil {
-				s.logger.Error("failed to delete", zap.Error(err))
+                s.logger.Error("failed to delete", "err", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -76,7 +74,7 @@ func (s *S) startServer() error {
 		err := s.server.ListenAndServe()
 		if err != nil {
 			if err != http.ErrServerClosed {
-				s.logger.Panic("HTTP serve failed: %s", zap.Error(err))
+				s.logger.Error("HTTP serve failed", "err", err)
 			}
 		}
 	}()

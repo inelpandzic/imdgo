@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/raft"
 	cmap "github.com/orcaman/concurrent-map"
-	"go.uber.org/zap"
 )
 
 // fsm is a finite state machine that implements raft.FSM
@@ -16,12 +15,12 @@ type fsm S
 
 // Apply applies a Raft log entry to the key-value store.
 func (f *fsm) Apply(l *raft.Log) interface{} {
-	f.logger.Debug("applying fsm", zap.Any("log", l))
+	f.logger.Debug("applying fsm", "log", l)
 
 	var c command
 	if err := json.Unmarshal(l.Data, &c); err != nil {
 
-		f.logger.Sugar().Panicf("failed to unmarshal command: %s", err.Error())
+		f.logger.Error("failed to unmarshal command", "err", err.Error())
 	}
 
 	switch c.Op {
@@ -30,7 +29,8 @@ func (f *fsm) Apply(l *raft.Log) interface{} {
 	case "delete":
 		return f.applyDelete(c.Key)
 	default:
-		panic(fmt.Sprintf("unrecognized command op: %s", c.Op))
+		f.logger.Error(fmt.Sprintf("unrecognized command op: %s", c.Op))
+		return nil
 	}
 }
 
@@ -65,13 +65,13 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 }
 
 func (f *fsm) applySet(key string, value interface{}) interface{} {
-	f.logger.Sugar().Debugf("FSM applying set: key:%s, val:%s", key, value)
+	f.logger.Debug("FSM applying set operation", "key", key, "value", value)
 	f.m.Set(key, value)
 	return nil
 }
 
 func (f *fsm) applyDelete(key string) interface{} {
-	f.logger.Sugar().Debugf("FSM applying delete: key:%s", key)
+	f.logger.Debug("FSM applying delete operation", "key", key)
 
 	f.m.Remove(key)
 	return nil
