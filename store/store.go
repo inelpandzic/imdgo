@@ -50,6 +50,7 @@ func New(raftDir, hostAddr string, members []string, logger hclog.Logger) *S {
         o := hclog.DefaultOptions
         o.JSONFormat = false
         o.Level = hclog.Info
+        o.Name = "IMDGO"
         logger = hclog.New(o)
     }
 
