@@ -4,12 +4,18 @@ import (
 	"io/ioutil"
 	"testing"
 	"time"
+
+    "github.com/hashicorp/go-hclog"
 )
 
 func Test_StoreServer(t *testing.T) {
 	const leaderAddr = "localhost"
 	tmpDir, _ := ioutil.TempDir("", "store_test")
-	s := New(tmpDir, leaderAddr, []string{leaderAddr})
+
+    o := hclog.DefaultOptions
+    o.Level = hclog.Debug
+    logger := hclog.New(o)
+	s := New(tmpDir, leaderAddr, []string{leaderAddr}, logger)
 	if s == nil {
 		t.Fatalf("failed to create store")
 	}

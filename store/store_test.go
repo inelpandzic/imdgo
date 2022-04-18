@@ -5,12 +5,22 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/hashicorp/go-hclog"
 )
+
+var logger hclog.Logger
+
+func init() {
+    o := hclog.DefaultOptions
+    o.Level = hclog.Debug
+    logger = hclog.New(o)
+}
 
 // Test_StoreOpen tests that the store can be opened.
 func Test_StoreOpen(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
-	s := New(tmpDir, "127.0.0.1", []string{"127.0.0.1"})
+	s := New(tmpDir, "127.0.0.1", []string{"127.0.0.1"}, logger)
 
 	if s == nil {
 		t.Fatalf("failed to create store")
@@ -29,7 +39,7 @@ func Test_StoreOpen(t *testing.T) {
 // Test_StoreOpenSingleNode tests that a command can be applied to the log
 func Test_StoreOpenSingleNode(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "store_test")
-	s := New(tmpDir, "127.0.0.1", []string{"127.0.0.1"})
+	s := New(tmpDir, "127.0.0.1", []string{"127.0.0.1"}, logger)
 
 	if s == nil {
 		t.Fatalf("failed to create store")

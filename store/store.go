@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/orcaman/concurrent-map"
-	"go.uber.org/zap"
 )
 
 const (
@@ -41,13 +41,17 @@ type S struct {
 	raft   *raft.Raft   // the consensus mechanism
 	server *http.Server // server for sending writes to the leader
 
-	logger *zap.Logger
+	logger hclog.Logger
 }
 
 // New returns a new in-memory Store.
-func New(raftDir, hostAddr string, members []string) *S {
-	//logger, _ := zap.NewProduction()
-	logger, _ := zap.NewDevelopment()
+func New(raftDir, hostAddr string, members []string, logger hclog.Logger) *S {
+    if logger == nil {
+        o := hclog.DefaultOptions
+        o.JSONFormat = false
+        o.Level = hclog.Info
+        logger = hclog.New(o)
+    }
 
 	return &S{
 		nodeID:   nodeID(hostAddr),
@@ -64,9 +68,11 @@ func New(raftDir, hostAddr string, members []string) *S {
 // Open opens the store. If and there are no existing peers, meaning there is not a formed cluster,
 // then this node becomes the first node, and therefore leader, of the cluster.
 func (s *S) Open() error {
-	s.logger.Debug("opening the store", zap.String("node", s.nodeID))
+	s.logger.Debug("opening the store", "node", s.nodeID)
 
 	config := raft.DefaultConfig()
+    config.Logger = s.logger
+
 	config.LocalID = raft.ServerID(s.nodeID)
 
 	addr, err := net.ResolveTCPAddr("tcp", s.raftBind)
@@ -115,10 +121,10 @@ func (s *S) Open() error {
 			Servers: servers,
 		}
 
-		s.logger.Debug("bootstrapping the cluster", zap.Any("members", servers))
+		s.logger.Debug("bootstrapping the cluster", "members", servers)
 		ra.BootstrapCluster(configuration)
 	} else {
-		s.logger.Sugar().Debugf("joining to existing cluster on leader: %s", leader)
+		s.logger.Debug(fmt.Sprintf("joining to existing cluster on leader: %s", leader))
 		if err := s.join(s.nodeID, string(leader), configFuture); err != nil {
 			return fmt.Errorf("failed to join to existing cluester: %w", err)
 		}
@@ -128,6 +134,7 @@ func (s *S) Open() error {
 		return err
 	}
 
+    s.logger.Info("IMDGO store started", "members", s.members)
 	return nil
 }
 
@@ -161,18 +168,18 @@ func (s *S) join(nodeID, addr string, configFuture raft.ConfigurationFuture) err
 
 // Get returns the value for the given key.
 func (s *S) Get(key string) (interface{}, bool) {
-	s.logger.Sugar().Debugf("get operation: key:%s", key)
+	s.logger.Debug("get operation:", "key", key)
 	return s.m.Get(key)
 }
 
 // Set sets the value for the given key. If it gets called on a follower node
 // the request will be forwarded to the leader.
 func (s *S) Set(key string, value interface{}) error {
-	s.logger.Sugar().Debugf("set operation: key:%s, val:%s", key, value)
+	s.logger.Debug("set operation: ", "key", key, "value", value)
 
 	if s.raft.State() != raft.Leader {
 		l := stripPort(string(s.raft.Leader()))
-		s.logger.Sugar().Debugf("forwarding the request to leader at: %s", l)
+		s.logger.Debug(fmt.Sprintf("forwarding the request to leader at: %s", l))
 		return writeOnLeader(l, key, value)
 	}
 
@@ -193,11 +200,11 @@ func (s *S) Set(key string, value interface{}) error {
 // Delete deletes the given key. If it gets called on a follower node
 // the request will be forwarded to the leader.
 func (s *S) Delete(key string) error {
-	s.logger.Sugar().Debugf("delete operation: key:%s", key)
+	s.logger.Debug("delete operation", "key", key)
 
 	if s.raft.State() != raft.Leader {
 		l := stripPort(string(s.raft.Leader()))
-		s.logger.Sugar().Debugf("forwarding the request to leader at: %s", l)
+		s.logger.Debug(fmt.Sprintf("forwarding the request to leader at: %s", l))
 		return deleteOnLeader(l, key)
 	}
 
